@@ -202,9 +202,8 @@ button.sup{width:100%;font:inherit;text-align:start;cursor:pointer}
 .rim u{position:absolute;inset-inline-end:-5px;bottom:-5px;width:17px;height:17px;border-radius:50%;background:var(--in);border:1.5px solid var(--bd);display:grid;place-items:center;text-decoration:none;color:var(--tx)}
 .rim u .ic{width:10px;height:10px}
 .tile.has{background:var(--bd);padding:0;overflow:hidden}.tile.has img{width:100%;height:100%;object-fit:cover;display:block}
-html:not([lang=ar]) :is(p,small,h1,h2,h3):not(.c):not(.center){unicode-bidi:plaintext;text-align:right}
-html:not([lang=ar]) :is(b,summary,label){unicode-bidi:plaintext}
-html:not([lang=ar]) .drop :is(p,small,b),html:not([lang=ar]) .qrcap :is(p,small,b){text-align:center}
+html[lang=ar] :is(p,small,h1,h2,h3,b,summary,label,li){unicode-bidi:plaintext}
+html[lang=ar] input:not([dir=ltr]),html[lang=ar] textarea:not([dir=ltr]){unicode-bidi:plaintext;text-align:right}
 .whoS{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bd)}.whoS img{width:38px;height:38px}.whoS h2{font-size:1rem;margin:0}.whoS .sub{margin:0;font-size:.78rem}
 </style>
 </head>
@@ -440,7 +439,7 @@ function tr(k,v){
 }
 function applyLang(){
   lang=langPref==='auto'?detectLang():langPref;
-  var h=document.documentElement;h.lang=lang;h.dir='rtl';
+  var h=document.documentElement;h.lang=lang;h.dir='ltr';
   document.title=tr('app_title');
   document.querySelectorAll('[data-i18n]').forEach(function(e){e.textContent=tr(e.getAttribute('data-i18n'))});
   document.querySelectorAll('[data-i18n-html]').forEach(function(e){e.innerHTML=tr(e.getAttribute('data-i18n-html'))});
