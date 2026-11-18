@@ -1,4 +1,4 @@
-GitHub Uploader
+# GitHub Uploader
 
 From AI-generated projects to ready-to-use Android apps and websites — directly from your phone.
 
