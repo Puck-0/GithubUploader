@@ -1891,6 +1891,8 @@ function workflow(d){
         with:
           distribution: temurin
           java-version: 17
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 `;
   const NODE=`      - uses: actions/setup-node@v4
         with:
@@ -1961,7 +1963,7 @@ permissions:
   contents: write
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 `+steps+`      - name: Collect APK
@@ -2607,6 +2609,18 @@ function renderFail(full,text,openUrl,whatKey,subKey,subVars){
   endNotif();notify({id:1003,title:tr('failed',{x:tr(whatKey)}),body:full,channelId:'result',actionTypeId:'FAIL'});
   $('cpLog').onclick=async()=>{const ok=await copyText(text);toast(tr(ok?'copied_err':'copy_fail'));const b=$('cpLog');b.innerHTML=ic(ok?'check':'alert')+`<span>${tr(ok?'copied':'copy_manual')}</span>`;setTimeout(()=>b.innerHTML=ic('copy')+`<span data-i18n="copy_log">${tr('copy_log')}</span>`,2000)};
 }
+async function fetchJobLog(full,id){
+  const url=`https://api.github.com/repos/${full}/actions/jobs/${id}/logs`;
+  try{const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(r.ok){const t=await r.text();if(t)return t}}catch(e){}
+  try{
+    const H=plug('CapacitorHttp');if(!H)return '';
+    const a=await H.request({url:url,method:'GET',headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json'},disableRedirects:true});
+    const loc=a&&a.headers&&(a.headers.Location||a.headers.location);
+    if(loc){const b=await H.request({url:loc,method:'GET',responseType:'text'});return typeof b.data==='string'?b.data:''}
+    if(a&&a.status===200&&typeof a.data==='string')return a.data;
+  }catch(e){}
+  return '';
+}
 async function showFail(full,run){
   bsT('err','build_failed','reading_log');
   let head=`Build failed: ${full}\nWorkflow: ${run.name}\nRun: ${run.html_url}\n`,text=head,subKey='',subVars=null;
@@ -2617,7 +2631,7 @@ async function showFail(full,run){
     head=`Build failed: ${full}\nWorkflow: ${run.name}\nFailed step: ${step?step.name:'unknown'}\nRun: ${run.html_url}\n`;
     text=head;
     let log='';
-    try{const r=await fetch(`https://api.github.com/repos/${full}/actions/jobs/${job.id}/logs`,{headers:{Authorization:'Bearer '+token}});if(r.ok)log=await r.text()}catch(e){}
+    log=await fetchJobLog(full,job.id);
     if(log)text=buildLogText(head,log);
     else{try{const an=await gh(`/repos/${full}/check-runs/${job.id}/annotations`);text=head+'\n'+an.map(a=>`${a.annotation_level}: ${a.message}`).join('\n')}catch(e){}}
     if(step){subKey='in_step';subVars={s:step.name}}
