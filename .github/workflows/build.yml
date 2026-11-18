@@ -99,9 +99,10 @@ jobs:
           open(p,'w').write(s)
           PY2
           cat android/app/src/main/AndroidManifest.xml
-      - name: Version code (must grow with every build so updates install over the old app)
+      - name: Version code (always increasing, so updates install over the old app)
         run: |
-          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          VC=$(( $(date +%s) / 60 ))
+          sed -i -E "s/versionCode [0-9]+/versionCode $VC/; s/versionName \"[^\"]*\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
           grep -n "versionCode\|versionName" android/app/build.gradle
       - run: npx cap sync android
       - run: |
@@ -113,12 +114,27 @@ jobs:
           NAME=$(basename "$GITHUB_REPOSITORY")
           cp android/app/build/outputs/apk/debug/app-debug.apk "$NAME.apk"
           echo "APK_FILE=$NAME.apk" >> "$GITHUB_ENV"
-      - name: Sign APK (stable key)
+      - name: Sign APK (stable key, created automatically on the first build)
         env:
           KEY_B64: ${{ secrets.SIGN_KEY_B64 }}
           CERT_B64: ${{ secrets.SIGN_CERT_B64 }}
         run: |
-          if [ -z "$KEY_B64" ] || [ -z "$CERT_B64" ]; then echo "::warning::No signing key found, keeping the debug signature"; exit 0; fi
+          SD=.github/signing
+          if [ -f "$SD/key.b64" ] && [ -f "$SD/cert.b64" ]; then
+            KEY_B64=$(cat "$SD/key.b64"); CERT_B64=$(cat "$SD/cert.b64")
+          fi
+          if [ -z "$KEY_B64" ] || [ -z "$CERT_B64" ]; then
+            echo "No signing key yet: creating one and saving it in the repository"
+            openssl genrsa -out "$RUNNER_TEMP/k.pem" 2048 2>/dev/null
+            openssl pkcs8 -topk8 -inform PEM -outform DER -in "$RUNNER_TEMP/k.pem" -out "$RUNNER_TEMP/new.pk8" -nocrypt
+            openssl req -new -x509 -key "$RUNNER_TEMP/k.pem" -sha256 -days 10950 -subj "/CN=$(basename "$GITHUB_REPOSITORY")" -outform DER -out "$RUNNER_TEMP/new.der"
+            KEY_B64=$(base64 -w0 "$RUNNER_TEMP/new.pk8"); CERT_B64=$(base64 -w0 "$RUNNER_TEMP/new.der")
+            mkdir -p "$SD"; echo "$KEY_B64" > "$SD/key.b64"; echo "$CERT_B64" > "$SD/cert.b64"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$SD/key.b64" "$SD/cert.b64"
+            git commit -m "Add app signing key" && git push || echo "::warning::Could not save the signing key; the next build may use a different key"
+          fi
           echo "$KEY_B64" | base64 -d > "$RUNNER_TEMP/key.pk8"
           echo "$CERT_B64" | base64 -d > "$RUNNER_TEMP/cert.der"
           AS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
