@@ -14,7 +14,7 @@ Create with AI. Upload with one tap. Build, publish, and test.
 
 ---
 
-- ✨Features
+##  ✨Features
 
 📱 Build Android APKs from ZIP files
 
@@ -31,7 +31,7 @@ The application detects supported project structures and generates the appropria
 
 When the build finishes, you can download the APK directly to your phone.
 
-- 🌐 Publish HTML Websites
+##  🌐 Publish HTML Websites
 
 Have an AI-generated website? Publish it using GitHub Pages.
 
@@ -41,7 +41,7 @@ Have an AI-generated website? Publish it using GitHub Pages.
 - Get a public URL to share your website.
 - Update existing websites without starting over.
 
-- 📦 Simple Project Uploads
+##  📦 Simple Project Uploads
 
 - Create new GitHub repositories.
 - Upload ZIP files directly.
@@ -50,7 +50,7 @@ Have an AI-generated website? Publish it using GitHub Pages.
 - Replace existing project files when needed.
 - Automatically configure APK build workflows.
 
-- 📚 Project Library
+##  📚 Project Library
 
 Manage your uploaded projects directly from the application.
 
@@ -61,13 +61,13 @@ Manage your uploaded projects directly from the application.
 - Rename or delete repositories.
 - Manage and update individual files.
 
-- 🔄 Automatic APK Builds
+##  🔄 Automatic APK Builds
 
 GitHub Actions handles the building process in the cloud, so you don't need Android Studio or a local development environment.
 
 The application also supports automated APK signing when the required signing secrets are available.
 
-- 🌍 Multilingual Interface
+##  🌍 Multilingual Interface
 
 The application supports:
 
@@ -77,7 +77,7 @@ The application supports:
 
 ---
 
-- 🚀 How to Use
+##  🚀 How to Use
 
 You only need three simple steps to turn an AI-generated project into an Android application:
 
@@ -99,7 +99,7 @@ That's it!
 
 ---
 
-- 🔐 Getting Started
+##  🔐 Getting Started
 
 1. Install and open GitHub Uploader.
 2. Sign in using your GitHub account.
@@ -111,7 +111,7 @@ The application also provides an advanced login option using a GitHub Personal A
 
 ---
 
-- ⚙️ Requirements
+##  ⚙️ Requirements
 
 - An Android device.
 - A GitHub account.
@@ -128,7 +128,7 @@ Important notes:
 
 ---
 
-- 🎯 Why GitHub Uploader?
+##  🎯 Why GitHub Uploader?
 
 AI coding tools have made creating software easier than ever. Anyone can describe an idea and generate an entire application or website.
 
@@ -142,7 +142,7 @@ No computer. No complicated manual Git commands. Just a simpler workflow.
 
 ---
 
-- ❤️ Support the Project
+##  ❤️ Support the Project
 
 GitHub Uploader is completely free and open-source.
 
@@ -152,7 +152,7 @@ Feedback, suggestions, bug reports, and contributions are also very welcome!
 
 ---
 
-- 📥 Download & Source Code
+##  📥 Download & Source Code
 
 GitHub Repository:
 
