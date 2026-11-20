@@ -2608,16 +2608,29 @@ function renderFail(full,text,openUrl,whatKey,subKey,subVars){
   endNotif();notify({id:1003,title:tr('failed',{x:tr(whatKey)}),body:full,channelId:'result',actionTypeId:'FAIL'});
   $('cpLog').onclick=async()=>{const ok=await copyText(text);toast(tr(ok?'copied_err':'copy_fail'));const b=$('cpLog');b.innerHTML=ic(ok?'check':'alert')+`<span>${tr(ok?'copied':'copy_manual')}</span>`;setTimeout(()=>b.innerHTML=ic('copy')+`<span data-i18n="copy_log">${tr('copy_log')}</span>`,2000)};
 }
+function isRealLog(t){
+  if(typeof t!=='string'||t.length<40)return false;
+  var h=t.replace(/^\uFEFF/,'').trimStart().slice(0,300);
+  if(/^<\?xml|^<Error>|^<!DOCTYPE|^<html/i.test(h))return false;
+  if(/<Code>\w+<\/Code>/.test(h)||/BlobNotFound|AuthenticationFailed|AccessDenied/.test(h))return false;
+  if(/^\{\s*"message"/.test(h))return false;
+  return true;
+}
 async function fetchJobLog(full,id){
   const url=`https://api.github.com/repos/${full}/actions/jobs/${id}/logs`;
-  try{const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(r.ok){const t=await r.text();if(t)return t}}catch(e){}
-  try{
-    const H=plug('CapacitorHttp');if(!H)return '';
-    const a=await H.request({url:url,method:'GET',headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json'},disableRedirects:true});
-    const loc=a&&a.headers&&(a.headers.Location||a.headers.location);
-    if(loc){const b=await H.request({url:loc,method:'GET',responseType:'text'});return typeof b.data==='string'?b.data:''}
-    if(a&&a.status===200&&typeof a.data==='string')return a.data;
-  }catch(e){}
+  for(let attempt=0;attempt<3;attempt++){
+    try{const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(r.ok){const t=await r.text();if(isRealLog(t))return t}}catch(e){}
+    try{
+      const H=plug('CapacitorHttp');
+      if(H){
+        const a=await H.request({url:url,method:'GET',headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json'},disableRedirects:true});
+        const loc=a&&a.headers&&(a.headers.Location||a.headers.location);
+        if(loc){const b2=await H.request({url:loc,method:'GET',responseType:'text'});if(b2&&b2.status===200&&isRealLog(b2.data))return b2.data}
+        else if(a&&a.status===200&&isRealLog(a.data))return a.data;
+      }
+    }catch(e){}
+    if(attempt<2)await new Promise(r=>setTimeout(r,2500));
+  }
   return '';
 }
 async function showFail(full,run){
@@ -2626,14 +2639,19 @@ async function showFail(full,run){
   try{
     const jobs=(await gh(`/repos/${full}/actions/runs/${run.id}/jobs`)).jobs||[];
     const job=jobs.find(j=>j.conclusion==='failure')||jobs[0];
-    const step=job&&(job.steps||[]).find(x=>x.conclusion==='failure');
-    head=`Build failed: ${full}\nWorkflow: ${run.name}\nFailed step: ${step?step.name:'unknown'}\nRun: ${run.html_url}\n`;
+    const step=job&&((job.steps||[]).find(x=>x.conclusion==='failure')||(job.steps||[]).find(x=>x.conclusion&&!/^(success|skipped|neutral)$/.test(x.conclusion)));
+    head=`Build failed: ${full}\nWorkflow: ${run.name}\nFailed step: ${step?step.name:(job?'(job: '+job.name+')':'unknown')}\nRun: ${run.html_url}\n`;
     text=head;
     let log='';
     log=await fetchJobLog(full,job.id);
     if(log)text=buildLogText(head,log);
-    else{try{const an=await gh(`/repos/${full}/check-runs/${job.id}/annotations`);text=head+'\n'+an.map(a=>`${a.annotation_level}: ${a.message}`).join('\n')}catch(e){}}
-    if(step){subKey='in_step';subVars={s:step.name}}
+    else{
+      let an=[];
+      try{an=await gh(`/repos/${full}/check-runs/${job.id}/annotations`)}catch(e){}
+      if(an.length)text=head+'\n'+an.map(a=>`${a.annotation_level}: ${a.message}`).join('\n');
+      else subKey='log_fail';
+    }
+    if(step&&!subKey){subKey='in_step';subVars={s:step.name}}
   }catch(e){subKey='log_fail'}
   renderFail(full,text,run.html_url,'what_build',subKey,subVars);
 }

@@ -1,1 +1,10 @@
-{"appId":"com.uploader.app","appName":"GitHub Uploader","webDir":"www","plugins":{"CapacitorHttp":{"enabled":true}}}
+{
+  "appId": "com.uploader.app",
+  "appName": "GitHub Uploader",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
