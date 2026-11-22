@@ -2472,16 +2472,19 @@ async function ensureNotif(){
     if(p.display!=='granted')p=await LN.requestPermissions();
     notifOK=p.display==='granted';
     if(notifOK){
-      await LN.createChannel({id:'build',name:tr('ch_status'),importance:2,vibration:false});
-      await LN.createChannel({id:'result',name:tr('ch_result'),importance:4,vibration:true});
-      await LN.registerActionTypes({types:[{id:'OK',actions:[{id:'download',title:tr('act_download')}]},{id:'FAIL',actions:[{id:'copy',title:tr('act_copy')}]},{id:'SITE',actions:[{id:'open',title:tr('act_open')}]}]});
+      await LN.createChannel({id:'bld2',name:tr('ch_status'),importance:2,vibration:false,sound:''});
+      await LN.createChannel({id:'res2',name:tr('ch_result'),importance:3,vibration:false,lights:true,lightColor:'#4f6bff'});
+      try{await LN.deleteChannel({id:'build'});await LN.deleteChannel({id:'result'})}catch(e){}
+      await LN.registerActionTypes({types:[{id:'OK',actions:[{id:'download',title:tr('act_download'),foreground:true}]},{id:'FAIL',actions:[{id:'copy',title:tr('act_copy'),foreground:true}]},{id:'SITE',actions:[{id:'open',title:tr('act_open'),foreground:true}]}]});
     }
   }catch(e){}
 }
-var notify=o=>{if(LN&&notifOK)LN.schedule({notifications:[o]}).catch(()=>{})};
+var notify=o=>{if(LN&&notifOK)LN.schedule({notifications:[Object.assign({smallIcon:'ic_stat',iconColor:'#4f6bff'},o)]}).catch(()=>{})};
 var nCancel=ids=>{if(LN)LN.cancel({notifications:ids.map(id=>({id}))}).catch(()=>{})};
 if(LN)Promise.resolve(LN.addListener('localNotificationActionPerformed',async e=>{
   const ex=(e.notification&&e.notification.extra)||{};
+  if(e.actionId==='tap'&&e.notification&&e.notification.id===1002&&(ex.art||ex.url))e.actionId='download';
+  for(var w=0;w<60&&!token;w++)await new Promise(function(r){setTimeout(r,250)});
   if(e.actionId==='download'&&ex.art)downloadArtifact(ex.art);
   else if(e.actionId==='download'&&ex.url)downloadApk(ex.url);
   else if(e.actionId==='open'&&ex.url)openExt(ex.url,'_blank');
@@ -2650,7 +2653,7 @@ function renderFail(full,text,openUrl,whatKey,subKey,subVars,retry){
   apkReady(false);
   $('bsx').innerHTML=`<pre class="logv" id="logv"></pre><div class="row"><button class="btn" id="cpLog">${ic('copy')}<span data-i18n="copy_log">${tr('copy_log')}</span></button><a class="btn sec" target="_blank" rel="noopener" href="${openUrl}">${ic('ext')}<span data-i18n="open_gh">${tr('open_gh')}</span></a></div>`;
   $('logv').textContent=text;lastErr=text;store.set('last_err',text);if(retry)addRetry(retry);
-  endNotif();notify({id:1003,title:tr('failed',{x:tr(whatKey)}),body:full,channelId:'result',actionTypeId:'FAIL'});
+  endNotif();notify({id:1003,title:tr('failed',{x:tr(whatKey)}),body:full,channelId:'res2',actionTypeId:'FAIL'});
   $('cpLog').onclick=async()=>{const ok=await copyText(text);toast(tr(ok?'copied_err':'copy_fail'));const b=$('cpLog');b.innerHTML=ic(ok?'check':'alert')+`<span>${tr(ok?'copied':'copy_manual')}</span>`;setTimeout(()=>b.innerHTML=ic('copy')+`<span data-i18n="copy_log">${tr('copy_log')}</span>`,2000)};
 }
 var netPause=null;
@@ -2731,7 +2734,7 @@ async function watchSite(full,sha,pagesErr){
   if(pagesErr){renderFail(full,'Pages setup failed: '+full+'\n'+pagesErr+'\n'+tr('pub_note'),'https://github.com/'+full+'/settings/pages','what_site','pages_enable_fail');return}
   bsT('run','publishing','publish_eta');apkReady(false);
   useBM=await bmStart(full,tr('publishing'));
-  const bn=b=>useBM?bmSet(b,tr('publishing')):notify({id:1001,title:tr('publishing'),body:b,channelId:'build',ongoing:true,autoCancel:false});
+  const bn=b=>useBM?bmSet(b,tr('publishing')):notify({id:1001,title:tr('publishing'),body:b,channelId:'bld2',ongoing:true,autoCancel:false});
   if(!useBM)bn(full);
   while(id===watchId){
     await sleep(5000);if(id!==watchId)return;
@@ -2740,7 +2743,7 @@ async function watchSite(full,sha,pagesErr){
     const mine=b&&(!b.commit||b.commit===sha||sec>60);
     if(b&&mine&&b.status==='built'){
       bsT('ok','site_done','site_done_sub');apkReady(true);
-      endNotif();notify({id:1002,title:tr('site_published'),body:APKURL,channelId:'result',actionTypeId:'SITE',extra:{url:APKURL}});return;
+      endNotif();notify({id:1002,title:tr('site_published'),body:APKURL,channelId:'res2',actionTypeId:'SITE',extra:{url:APKURL}});return;
     }
     if(b&&mine&&b.status==='errored'){
       renderFail(full,'Pages build failed: '+full+'\n'+((b.error&&b.error.message)||'unknown error'),'https://github.com/'+full+'/actions','what_site','pages_build_fail');return;
@@ -2751,7 +2754,7 @@ async function watchSite(full,sha,pagesErr){
 }
 var BM=plug('BackgroundMode');
 var useBM=false;
-function bmSet(text,title){return BM?BM.setSettings({title:title||tr('building'),text:text,channelName:tr('ch_status'),channelDescription:tr('bm_desc'),color:'4f6bff',resume:true,hidden:false,silent:false,disableWebViewOptimization:true}).catch(function(){}):Promise.resolve()}
+function bmSet(text,title){return BM?BM.setSettings({title:title||tr('building'),text:text,channelName:tr('ch_status'),channelDescription:tr('bm_desc'),color:'4f6bff',resume:true,hidden:false,silent:true,disableWebViewOptimization:true}).catch(function(){}):Promise.resolve()}
 async function bmStart(full,title){
   if(!BM)return false;
   try{
@@ -2832,13 +2835,13 @@ async function resolveApkUrl(full,runs){
 }
 
 async function watchBuild(full,sha){
-  const id=++watchId,t0=Date.now(),limit=hasBuild?240:45;let netFails=0;
+  const id=++watchId,t0=Date.now(),limit=hasBuild?240:45;let netFails=0;await ensureNotif();
   bsT('run','building','build_eta');apkReady(false);
   nCancel([1002,1003]);let lastMin=-1;
   useBM=await bmStart(full);
-  const bn=(b)=>useBM?bmSet(b):notify({id:1001,title:tr('building'),body:b,channelId:'build',ongoing:true,autoCancel:false});if(!useBM)bn(full);
+  const bn=(b)=>useBM?bmSet(b):notify({id:1001,title:tr('building'),body:b,channelId:'bld2',ongoing:true,autoCancel:false});if(!useBM)bn(full);
   while(id===watchId){
-    await sleep(7000);if(id!==watchId)return;
+    await sleep(5000);if(id!==watchId)return;
     const sec=Math.floor((Date.now()-t0)/1000);
     let runs=[],ne=false;
     try{runs=((await gh(`/repos/${full}/actions/runs?head_sha=${sha}&per_page=20`)).workflow_runs||[]).filter(x=>x.event==='push'||x.event==='workflow_dispatch')}catch(e){ne=isNetErr(e)}
@@ -2861,7 +2864,7 @@ async function watchBuild(full,sha){
     const bad=runs.find(x=>x.conclusion!=='success'&&x.conclusion!=='skipped');
     if(!bad){const got=await resolveApkUrl(full,runs);
       if(got){bsT('ok','build_done',got===2?'app_ready_art':'app_ready');apkReady(true)}else{bsT('ok','build_done','apk_not_found');apkReady(false)}
-      endNotif();notify({id:1002,title:tr('build_done_n'),body:full,channelId:'result',actionTypeId:got?'OK':'SITE',extra:{url:APKURL,art:ARTAPK}});return}
+      endNotif();notify({id:1002,title:tr('build_done_n'),body:full,channelId:'res2',actionTypeId:got?'OK':'SITE',extra:{url:APKURL,art:ARTAPK}});return}
     await showFail(full,bad);return;
   }
 }
